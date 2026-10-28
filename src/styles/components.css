@@ -959,8 +959,8 @@ a.list-row:hover {
 
 /* ------------------------------------------------------------------ Menu */
 .menu {
-  position: absolute;
-  z-index: 40;
+  position: fixed;
+  z-index: 70;
   min-width: 210px;
   padding: 6px;
   border-radius: var(--r-md);

@@ -25,6 +25,7 @@ import { PresetChips, presetDescription } from '../components/StudioControls';
 import { SeekWaveform } from '../components/Waveform';
 import { Button, IconButton, Menu, Notice, Segmented, Slider, Switch } from '../components/ui';
 import { useT } from '../i18n';
+import { activatesFocused } from '../lib/keyboard';
 import { getRecording, requestPersist, type RecordingMeta } from '../lib/db';
 import { getSurah } from '../lib/quran';
 import { back, navigate, useRoute } from '../lib/router';
@@ -125,7 +126,7 @@ export function ReviewScreen({ id }: { id: string }) {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) || document.querySelector('.overlay')) return;
-      if (el.getAttribute('role') === 'slider') return;
+      if (el.getAttribute('role') === 'slider' || activatesFocused(e)) return;
       if (e.key === ' ') {
         e.preventDefault();
         togglePlay();

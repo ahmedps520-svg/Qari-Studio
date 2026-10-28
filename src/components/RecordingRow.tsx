@@ -79,7 +79,7 @@ export function RecordingRow({ meta, compact }: { meta: RecordingMeta; compact?:
       <button type="button" className="rec-main" onClick={() => navigate(`/recording/${meta.id}`)}>
         <span className="rec-title-line">
           <span className="rec-title truncate">{meta.title}</span>
-          {s && (
+          {s && !meta.title.includes(s.ar) && (
             <span className="rec-ar ar" lang="ar">
               {s.ar}
             </span>

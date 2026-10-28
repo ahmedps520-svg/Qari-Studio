@@ -10,6 +10,7 @@ import { Button, IconButton, Notice, Sheet } from '../components/ui';
 import { useT, type MessageKey, type T } from '../i18n';
 import { getRecording } from '../lib/db';
 import { getSurah, type Surah } from '../lib/quran';
+import { activatesFocused, typingTarget } from '../lib/keyboard';
 import { navigate, useRoute } from '../lib/router';
 import { useLibrary } from '../state/library';
 import { allPresets, findPreset, usePresets } from '../state/presets';
@@ -35,13 +36,6 @@ function rangeText(t: T, s: Surah, sel: Selection): string | null {
 function errorKey(code: EngineErrorCode | null): MessageKey {
   return `err.${code ?? 'unknown'}` as MessageKey;
 }
-
-const typingTarget = (e: KeyboardEvent) => {
-  const el = e.target as HTMLElement | null;
-  if (!el) return false;
-  const tag = el.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
-};
 
 export function StudioScreen() {
   const t = useT();
@@ -147,7 +141,7 @@ export function StudioScreen() {
   // Keyboard shortcuts (desktop).
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (typingTarget(e) || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('.overlay')) return;
+      if (typingTarget(e) || activatesFocused(e) || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('.overlay')) return;
       const k = e.key.toLowerCase();
       if (k === ' ' || k === 'r') {
         e.preventDefault();
@@ -363,8 +357,9 @@ export function StudioScreen() {
             </button>
             <div className="transport-side end">
               {active && (
-                <Button variant="secondary" icon={<Square />} onClick={() => void stop()} data-testid="stop">
-                  {t('studio.stop')}
+                <Button variant="secondary" icon={<Square />} onClick={() => void stop()} data-testid="stop" aria-label={t('studio.stop')} title={t('studio.stop')}>
+                  <span className="label-long">{t('studio.stop')}</span>
+                  <span className="label-short">{t('studio.stopShort')}</span>
                 </Button>
               )}
             </div>

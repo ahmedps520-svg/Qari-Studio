@@ -1914,11 +1914,29 @@ kbd {
 }
 
 /* Arabic snippets inside an English layout align with their neighbours, not their own direction. */
-.ar {
-  text-align: match-parent;
+:root[dir='ltr'] :is(.studio-ar, .continue-ar, .picker-ar, .daily-resume .ar) {
+  text-align: left;
 }
 
 /* Transport icons are directional (back ⟲, ⏮, ⏭): keep their order in both languages. */
 .player-controls {
   direction: ltr;
+}
+
+.label-short {
+  display: none;
+}
+
+@media (max-width: 520px) {
+  .transport .label-long {
+    display: none;
+  }
+
+  .transport .label-short {
+    display: inline;
+  }
+
+  .transport .btn {
+    padding: 0 14px;
+  }
 }

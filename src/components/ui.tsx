@@ -316,7 +316,7 @@ export function Sheet({
   );
 }
 
-/** Dropdown menu anchored to a trigger button. */
+/** Dropdown menu anchored to a trigger button. Rendered in a portal so cards never clip it. */
 export function Menu({
   label,
   trigger,
@@ -328,18 +328,35 @@ export function Menu({
   items: ({ label: string; icon?: ReactNode; onSelect: () => void; danger?: boolean; disabled?: boolean } | 'sep')[];
   align?: 'start' | 'end';
 }) {
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left?: number; right?: number } | null>(null);
+  const btn = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const t = useT();
+  const open = pos !== null;
+
+  const place = () => {
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const rtl = t.dir === 'rtl';
+    const atEnd = align === 'end';
+    const horiz = atEnd !== rtl ? { right: Math.max(8, vw - r.right) } : { left: Math.max(8, r.left) };
+    const below = vh - r.bottom;
+    setPos(below < 280 && r.top > below ? { bottom: vh - r.top + 6, ...horiz } : { top: r.bottom + 6, ...horiz });
+  };
 
   useEffect(() => {
     if (!open) return;
+    const close = () => setPos(null);
     const onDown = (e: MouseEvent) => {
-      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+      if (!menuRef.current?.contains(e.target as Node) && !btn.current?.contains(e.target as Node)) close();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        close();
+        btn.current?.focus();
+      }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         const btns = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? []);
@@ -350,17 +367,21 @@ export function Menu({
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
-    menuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    menuRef.current?.querySelector<HTMLButtonElement>('button:not([disabled])')?.focus();
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
     };
   }, [open]);
 
-  const side = align === 'end' ? { insetInlineEnd: 0 } : { insetInlineStart: 0 };
   return (
-    <div ref={wrap} style={{ position: 'relative' }} dir={t.dir}>
+    <>
       <button
+        ref={btn}
         type="button"
         className="icon-btn"
         aria-label={label}
@@ -369,37 +390,40 @@ export function Menu({
         aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
-          setOpen((o) => !o);
+          if (open) setPos(null);
+          else place();
         }}
       >
         {trigger}
       </button>
-      {open && (
-        <div ref={menuRef} className="menu" role="menu" style={{ top: '100%', marginTop: 6, ...side }}>
-          {items.map((it, i) =>
-            it === 'sep' ? (
-              <hr key={`sep-${i}`} />
-            ) : (
-              <button
-                key={it.label}
-                type="button"
-                role="menuitem"
-                className={it.danger ? 'danger' : ''}
-                disabled={it.disabled}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpen(false);
-                  it.onSelect();
-                }}
-              >
-                {it.icon}
-                {it.label}
-              </button>
-            ),
-          )}
-        </div>
-      )}
-    </div>
+      {open &&
+        createPortal(
+          <div ref={menuRef} className="menu" role="menu" dir={t.dir} style={{ position: 'fixed', ...pos }}>
+            {items.map((it, i) =>
+              it === 'sep' ? (
+                <hr key={`sep-${i}`} />
+              ) : (
+                <button
+                  key={it.label}
+                  type="button"
+                  role="menuitem"
+                  className={it.danger ? 'danger' : ''}
+                  disabled={it.disabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPos(null);
+                    it.onSelect();
+                  }}
+                >
+                  {it.icon}
+                  {it.label}
+                </button>
+              ),
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 

@@ -137,7 +137,7 @@ function Diagnostics() {
         </div>
         <div>
           <dt>{t('diag.context')}</dt>
-          <dd>{st.contextState}</dd>
+          <dd>{t(`diag.state.${st.contextState}` as MessageKey)}</dd>
         </div>
         <div>
           <dt>{t('diag.sampleRate')}</dt>

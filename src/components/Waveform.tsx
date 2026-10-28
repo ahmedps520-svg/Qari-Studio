@@ -342,7 +342,8 @@ export function SeekWaveform({
         ctx.fillStyle = x + barW <= px ? grad : dim;
         const r = Math.min(barW / 2, h);
         ctx.beginPath();
-        ctx.roundRect(x, mid - h, barW, h * 2, r);
+        if (typeof ctx.roundRect === 'function') ctx.roundRect(x, mid - h, barW, h * 2, r);
+        else ctx.rect(x, mid - h, barW, h * 2); // Safari < 16
         ctx.fill();
       }
       ctx.fillStyle = colorB;
