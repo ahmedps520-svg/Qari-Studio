@@ -1,0 +1,54 @@
+name: Deploy to GitHub Pages
+
+# Builds, tests and publishes the app to the gh-pages branch, which GitHub Pages serves at
+# https://<owner>.github.io/<repo>/ — on every push to the development or main branch.
+on:
+  push:
+    branches: [claude/youthful-ride-n32r27, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check and unit tests
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build for GitHub Pages
+        run: npx vite build
+        env:
+          QARI_BASE: /${{ github.event.repository.name }}/
+
+      - run: touch dist/.nojekyll
+
+      - name: Publish to the gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: Deploy ${{ github.sha }}
+
+      - name: Live link
+        run: echo "### Live at https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> "$GITHUB_STEP_SUMMARY"

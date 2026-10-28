@@ -1,6 +1,8 @@
 # Qari Studio
 
-A Quran recitation studio for the web. Recite in your own voice, hear yourself live through headphones with natural, studio-quality enhancement, and keep every recitation privately on your device.
+A Quran recitation studio for the web.
+
+**Live:** https://ahmedps520-svg.github.io/Qari-Studio/ (open it in Chrome, Edge or Safari; use headphones for Live Listen) Recite in your own voice, hear yourself live through headphones with natural, studio-quality enhancement, and keep every recitation privately on your device.
 
 - **Live Listen.** Real-time monitoring through headphones, using the same effects chain as the recordings.
 - **Nine vocal presets.** Plain Vanilla, Soft Echo, Beautiful +, Grand Mosque, Studio Qari, Warm & Deep, Pure Voice, Cinematic Space, and your own custom presets. Each one is a different configuration of a real processing chain.
@@ -20,6 +22,16 @@ npm run preview      # serve the production build
 ```
 
 The microphone needs a secure context: `https://` or `http://localhost`.
+
+## Deploy
+
+Every push to the development branch (or `main`) runs `.github/workflows/deploy-pages.yml`. It type-checks, runs the unit tests, builds with the `/Qari-Studio/` base path and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves.
+
+To check a deployment end to end (record, play, export, offline):
+
+```bash
+node tests/e2e/smoke.mjs https://ahmedps520-svg.github.io/Qari-Studio/
+```
 
 ## Tests
 
