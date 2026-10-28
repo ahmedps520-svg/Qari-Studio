@@ -1,0 +1,173 @@
+/* Qari Studio design tokens — two themes: Midnight Emerald (dark) and Sacred Ivory (light). */
+
+:root {
+  --font-ui: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-ui-ar: 'IBM Plex Sans Arabic', 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Cormorant Garamond', 'Amiri', Georgia, serif;
+  --font-arabic: 'Amiri', 'IBM Plex Sans Arabic', serif;
+  --font-quran: 'Amiri Quran', 'Amiri', serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+
+  --fs-2xs: 0.6875rem;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.84375rem;
+  --fs-base: 0.9375rem;
+  --fs-md: 1.0625rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 1.875rem;
+  --fs-3xl: 2.375rem;
+  --fs-4xl: 3rem;
+
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+  --s-9: 56px;
+  --s-10: 72px;
+
+  --ease: cubic-bezier(0.22, 0.8, 0.24, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 140ms;
+  --t-med: 240ms;
+  --t-slow: 420ms;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  --nav-h: 68px;
+  --sidebar-w: 248px;
+  --rail-w: 88px;
+  --content-max: 1180px;
+  --touch: 44px;
+}
+
+/* ---------------------------------------------------------------- Midnight Emerald (dark) */
+:root,
+:root[data-theme='midnight'] {
+  color-scheme: dark;
+  --bg: #050f0b;
+  --bg-2: #071510;
+  --surface: #0b1c16;
+  --surface-2: #10251d;
+  --surface-3: #153027;
+  --surface-sunken: #04100c;
+  --charcoal: #171b1a;
+  --overlay: rgba(2, 8, 6, 0.72);
+  --line: rgba(233, 222, 192, 0.075);
+  --line-2: rgba(233, 222, 192, 0.13);
+  --line-strong: rgba(233, 222, 192, 0.22);
+
+  --text: #f3eddf;
+  --text-2: #b9c3b9;
+  --text-3: #7f8f86;
+  --text-on-accent: #04130d;
+
+  --emerald: #1f8f69;
+  --emerald-2: #2bb487;
+  --emerald-glow: #5fe3b6;
+  --emerald-deep: #0d4a36;
+  --emerald-soft: rgba(43, 180, 135, 0.13);
+  --emerald-line: rgba(95, 227, 182, 0.28);
+
+  --gold: #c9a65c;
+  --gold-2: #e0c27f;
+  --gold-soft: rgba(201, 166, 92, 0.13);
+  --gold-line: rgba(224, 194, 127, 0.32);
+
+  --rec: #e2685b;
+  --rec-soft: rgba(226, 104, 91, 0.15);
+  --warn: #e3b35c;
+  --warn-soft: rgba(227, 179, 92, 0.12);
+  --ok: #4fd1a0;
+  --danger: #e66a5d;
+  --danger-soft: rgba(230, 106, 93, 0.13);
+
+  --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 1px 0 rgba(255, 255, 255, 0.035) inset, 0 12px 32px -14px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 28px 60px -24px rgba(0, 0, 0, 0.8);
+  --glow-emerald: 0 0 0 1px rgba(95, 227, 182, 0.16), 0 10px 40px -12px rgba(43, 180, 135, 0.45);
+
+  --hero-grad: radial-gradient(120% 140% at 85% 0%, rgba(43, 180, 135, 0.32) 0%, rgba(13, 74, 54, 0.2) 38%, transparent 70%),
+    linear-gradient(160deg, #0f2d22 0%, #0a1f18 55%, #081812 100%);
+  --page-glow: radial-gradient(900px 420px at 50% -120px, rgba(43, 180, 135, 0.11), transparent 70%);
+  --pattern-opacity: 0.05;
+  --wave-a: #5fe3b6;
+  --wave-b: #e0c27f;
+  --wave-dim: rgba(185, 195, 185, 0.22);
+}
+
+/* ---------------------------------------------------------------- Sacred Ivory (light) */
+:root[data-theme='ivory'] {
+  color-scheme: light;
+  --bg: #f5f0e3;
+  --bg-2: #f9f5ea;
+  --surface: #fffdf7;
+  --surface-2: #f6f1e5;
+  --surface-3: #eee6d4;
+  --surface-sunken: #efe8d8;
+  --charcoal: #2a2e2c;
+  --overlay: rgba(28, 33, 30, 0.38);
+  --line: rgba(16, 39, 31, 0.08);
+  --line-2: rgba(16, 39, 31, 0.13);
+  --line-strong: rgba(16, 39, 31, 0.22);
+
+  --text: #10271f;
+  --text-2: #445a50;
+  --text-3: #6f7f77;
+  --text-on-accent: #fdfbf4;
+
+  --emerald: #0f5c43;
+  --emerald-2: #0d6a4c;
+  --emerald-glow: #12936a;
+  --emerald-deep: #0a3f2e;
+  --emerald-soft: rgba(15, 92, 67, 0.08);
+  --emerald-line: rgba(15, 92, 67, 0.22);
+
+  --gold: #a48039;
+  --gold-2: #8f6d2a;
+  --gold-soft: rgba(164, 128, 57, 0.1);
+  --gold-line: rgba(164, 128, 57, 0.3);
+
+  --rec: #c4473b;
+  --rec-soft: rgba(196, 71, 59, 0.1);
+  --warn: #a8741b;
+  --warn-soft: rgba(168, 116, 27, 0.1);
+  --ok: #157a56;
+  --danger: #b8402f;
+  --danger-soft: rgba(184, 64, 47, 0.09);
+
+  --shadow-sm: 0 1px 2px rgba(40, 33, 15, 0.06);
+  --shadow-md: 0 1px 2px rgba(40, 33, 15, 0.05), 0 12px 30px -16px rgba(40, 33, 15, 0.22);
+  --shadow-lg: 0 2px 4px rgba(40, 33, 15, 0.05), 0 30px 60px -28px rgba(40, 33, 15, 0.3);
+  --glow-emerald: 0 0 0 1px rgba(15, 92, 67, 0.12), 0 12px 32px -14px rgba(15, 92, 67, 0.35);
+
+  --hero-grad: radial-gradient(120% 140% at 85% 0%, rgba(201, 166, 92, 0.28) 0%, rgba(18, 147, 106, 0.12) 40%, transparent 72%),
+    linear-gradient(160deg, #0f5c43 0%, #0c4c37 55%, #0a3f2e 100%);
+  --page-glow: radial-gradient(900px 420px at 50% -140px, rgba(201, 166, 92, 0.14), transparent 70%);
+  --pattern-opacity: 0.07;
+  --wave-a: #0f6b4e;
+  --wave-b: #a48039;
+  --wave-dim: rgba(16, 39, 31, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
+}
