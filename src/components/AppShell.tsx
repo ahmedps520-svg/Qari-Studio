@@ -1,5 +1,5 @@
 import { BookOpen, Home, Library, Moon, Settings, SlidersHorizontal, Sun } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 import { engine } from '../audio/engine';
 import { useEngine, useFrameValue } from '../audio/hooks';
 import { useT, type MessageKey } from '../i18n';
@@ -24,9 +24,17 @@ const NAV: { to: string; key: MessageKey; icon: ReactNode; match: (p: string) =>
   { to: '/library', key: 'nav.library', icon: <Library />, match: (p) => p.startsWith('/library') || p.startsWith('/recording') },
 ];
 
+const lightQuery = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-color-scheme: light)') : undefined;
+
 export function useEffectiveTheme(): 'midnight' | 'ivory' {
   const theme = useSettings((s) => s.theme);
-  const prefersLight = useFrameValue(() => window.matchMedia?.('(prefers-color-scheme: light)').matches ?? false, theme === 'system', 2000);
+  const prefersLight = useSyncExternalStore(
+    (l) => {
+      lightQuery?.addEventListener('change', l);
+      return () => lightQuery?.removeEventListener('change', l);
+    },
+    () => lightQuery?.matches ?? false,
+  );
   if (theme === 'system') return prefersLight ? 'ivory' : 'midnight';
   return theme;
 }

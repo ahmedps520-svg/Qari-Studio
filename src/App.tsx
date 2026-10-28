@@ -74,6 +74,9 @@ function useAppEffects() {
   }, [params]);
 
   useEffect(() => {
+    // Each launch starts the Studio with the default preset.
+    const { defaultPresetId } = useSettings.getState();
+    if (useStudio.getState().presetId !== defaultPresetId) useStudio.getState().selectPreset(defaultPresetId);
     void (async () => {
       await recoverInterruptedRecordings().catch(() => undefined);
       await useLibrary.getState().refresh();

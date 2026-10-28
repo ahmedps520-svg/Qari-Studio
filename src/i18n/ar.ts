@@ -512,6 +512,11 @@ export const ar: Record<MessageKey, string> = {
   'about.installSub': 'استخدمه كتطبيق ودون اتصال من شاشتك الرئيسية',
   'about.offlineReady': 'جاهز للعمل دون اتصال',
 
+  'pwa.update': 'إصدار جديد من استوديو القارئ جاهز.',
+  'pwa.reload': 'تحديث',
+  'pwa.finishFirst': 'أنهِ تسجيلك أو أوقفه أولًا، ثم حدّث.',
+  'settings.defaultPresetSub': 'يبدأ الاستوديو بهذا الإعداد في كل مرة تفتح فيها التطبيق.',
+  'state.savedShort': 'محفوظ',
   'diag.title': 'فحص الصوت',
   'diag.engine': 'محرّك الصوت',
   'diag.sampleRate': 'معدل العينات',

@@ -510,6 +510,11 @@ export const en = {
   'about.installSub': 'Use it like an app, offline, from your home screen',
   'about.offlineReady': 'Ready to work offline',
 
+  'pwa.update': 'A new version of Qari Studio is ready.',
+  'pwa.reload': 'Update',
+  'pwa.finishFirst': 'Finish or stop your recording first, then update.',
+  'settings.defaultPresetSub': 'The Studio starts with this preset each time you open the app.',
+  'state.savedShort': 'Saved',
   'diag.title': 'Audio check',
   'diag.engine': 'Audio engine',
   'diag.sampleRate': 'Sample rate',

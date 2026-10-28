@@ -16,6 +16,7 @@ import { promptInstall, useInstallAvailable } from '../lib/install';
 import { useLibrary } from '../state/library';
 import { allPresets, usePresets } from '../state/presets';
 import { useSettings, type Language, type ThemeChoice } from '../state/settings';
+import { useStudio } from '../state/studio';
 import { ask, toast } from '../state/ui';
 
 function Section({ id, title, icon, children }: { id: string; title: string; icon: ReactNode; children: ReactNode }) {
@@ -253,8 +254,16 @@ export function SettingsScreen() {
             </select>
           )}
         </Row>
-        <Row label={t('settings.defaultPreset')}>
-          <select className="select sm" style={{ width: 'auto', minWidth: 180 }} value={s.defaultPresetId} onChange={(e) => s.set({ defaultPresetId: e.target.value })}>
+        <Row label={t('settings.defaultPreset')} sub={t('settings.defaultPresetSub')}>
+          <select
+            className="select sm"
+            style={{ width: 'auto', minWidth: 180 }}
+            value={s.defaultPresetId}
+            onChange={(e) => {
+              s.set({ defaultPresetId: e.target.value });
+              if (st.recording.state === 'idle') useStudio.getState().selectPreset(e.target.value);
+            }}
+          >
             {allPresets(custom).map((p) => (
               <option key={p.id} value={p.id}>
                 {t.presetName(p)}

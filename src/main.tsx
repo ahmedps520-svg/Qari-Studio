@@ -27,5 +27,5 @@ createRoot(document.getElementById('root')!).render(
 );
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  void import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }));
+  void import('./lib/pwa').then((m) => m.registerServiceWorker());
 }

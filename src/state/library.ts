@@ -4,6 +4,8 @@ import { deleteRecording, duplicateRecording, listRecordings, patchRecording, ty
 
 interface LibraryState {
   recordings: RecordingMeta[];
+  /** When a take was last saved to the library (drives the Studio's "Saved" state). */
+  lastSavedAt: number;
   loaded: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -15,6 +17,7 @@ interface LibraryState {
 
 export const useLibrary = create<LibraryState>()((set, get) => ({
   recordings: [],
+  lastSavedAt: 0,
   loaded: false,
   error: null,
   refresh: async () => {
@@ -26,8 +29,10 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     }
   },
   patch: async (id, patch) => {
+    const prev = get().recordings.find((r) => r.id === id);
     const next = await patchRecording(id, { ...patch, updatedAt: Date.now() });
     if (next) get().upsertLocal(next);
+    if (next && patch.status === 'saved' && prev?.status !== 'saved') set({ lastSavedAt: Date.now() });
     return next;
   },
   remove: async (id) => {

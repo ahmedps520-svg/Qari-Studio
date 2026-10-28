@@ -56,6 +56,8 @@ export function StudioScreen() {
   const selectPreset = useStudio((s) => s.selectPreset);
   const custom = usePresets((s) => s.custom);
   const upsert = useLibrary((s) => s.upsertLocal);
+  const lastSavedAt = useLibrary((s) => s.lastSavedAt);
+  const [, forceTick] = useState(0);
   const remove = useLibrary((s) => s.remove);
   const [picker, setPicker] = useState(false);
   const [help, setHelp] = useState(false);
@@ -180,7 +182,15 @@ export function StudioScreen() {
     };
   }, [primary, stop, t, selectPreset, setSettings]);
 
-  const stateKey: MessageKey = !micOn && !active
+  const justSaved = rec === 'idle' && Date.now() - lastSavedAt < 8000;
+  useEffect(() => {
+    if (!justSaved) return;
+    const id = setTimeout(() => forceTick((x) => x + 1), 8000 - (Date.now() - lastSavedAt) + 50);
+    return () => clearTimeout(id);
+  }, [justSaved, lastSavedAt]);
+  const stateKey: MessageKey = justSaved
+    ? 'state.saved'
+    : !micOn && !active
     ? 'state.micOff'
     : rec === 'starting'
       ? 'state.starting'
@@ -191,7 +201,7 @@ export function StudioScreen() {
           : paused
             ? 'state.paused'
             : 'state.ready';
-  const stateClass = recording ? 'rec' : paused ? 'warn' : rec === 'stopping' ? 'gold' : micOn ? 'emerald' : '';
+  const stateClass = justSaved ? 'gold' : recording ? 'rec' : paused ? 'warn' : rec === 'stopping' ? 'gold' : micOn ? 'emerald' : '';
 
   const waveMode = recording ? 'recording' : paused ? 'paused' : micOn ? 'live' : 'idle';
   const interruption = st.recording.interruption;

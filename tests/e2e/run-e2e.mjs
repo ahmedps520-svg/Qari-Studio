@@ -448,6 +448,48 @@ async function main() {
       assert(r.late < r.early * 0.01, 'feedback decays instead of running away');
     });
 
+    await step('Vocal Presets page: audition presets with your own recording', async () => {
+      await page.goto(`${BASE}#/presets`);
+      await page.getByTestId('preview-grand-mosque').click();
+      await page.waitForFunction(() => window.__qari.player.getState().playing, null, { timeout: 10000 });
+      const id = await qari(page, () => window.__qari.player.getState().loadedId);
+      assert(id.startsWith('audition:'), 'auditioning a saved recording');
+      await page.getByTestId('preview-soft-echo').click();
+      await page.waitForTimeout(400);
+      assert(await qari(page, () => window.__qari.player.getState().playing), 'switching presets keeps playing');
+      assert(await page.locator('.preset-card.playing[data-preset="soft-echo"]').isVisible(), 'shows which preset is playing');
+      await page.getByTestId('preview-soft-echo').click();
+    });
+
+    await step('Back up everything, delete all, restore from the backup', async () => {
+      const before = await qari(page, () => window.__qari.db.listRecordings().then((l) => l.map((r) => ({ id: r.id, title: r.title, frames: r.frames }))));
+      await page.goto(`${BASE}#/settings`);
+      const backupRow = page.locator('.setting-row', { hasText: 'Back up all recordings' });
+      const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), backupRow.locator('button').click()]);
+      const zipPath = join(out, dl.suggestedFilename());
+      await dl.saveAs(zipPath);
+      const { unzipSync, strFromU8 } = await import('fflate');
+      const files = unzipSync(new Uint8Array(readFileSync(zipPath)));
+      const manifest = JSON.parse(strFromU8(files['qari-studio-backup.json']));
+      log(`${dl.suggestedFilename()}: ${manifest.recordings.length} recordings, ${Object.keys(files).length - 1} audio files`);
+      assert(manifest.recordings.length === before.length, 'all recordings in the backup');
+
+      await page.locator('.setting-row', { hasText: 'Delete all recordings' }).locator('button').click();
+      await page.locator('.sheet input').fill('DELETE');
+      await page.getByTestId('confirm-ok').click();
+      await page.waitForFunction(() => window.__qari.db.listRecordings().then((l) => l.length === 0));
+
+      await page.locator('input[type=file]').setInputFiles(zipPath);
+      await page.waitForFunction((n) => window.__qari.db.listRecordings().then((l) => l.length === n), before.length, { timeout: 30000 });
+      const after = await qari(page, () => window.__qari.db.listRecordings().then((l) => l.map((r) => ({ id: r.id, title: r.title, frames: r.frames }))));
+      for (const b of before) {
+        const a = after.find((x) => x.id === b.id);
+        assert(a && a.title === b.title && a.frames === b.frames, `restored ${b.title}`);
+      }
+      const frames = await qari(page, (id) => window.__qari.db.getRecording(id).then((m) => window.__qari.db.loadAudio(m.audioId)).then((s) => s.length), recId);
+      assert(frames === before.find((b) => b.id === recId).frames, 'audio restored sample-exact');
+    });
+
     await step('Microphone disconnected mid-recording: paused safely, then resumed', async () => {
       await page.goto(`${BASE}#/studio`);
       await ensureMic(page);
