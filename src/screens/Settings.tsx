@@ -217,6 +217,7 @@ export function SettingsScreen() {
         <Row label={t('settings.defaultMic')} stacked>
           <select
             className="select"
+            aria-label={t('settings.defaultMic')}
             value={s.inputDeviceId ?? ''}
             onChange={(e) => {
               s.set({ inputDeviceId: e.target.value || null });
@@ -237,6 +238,7 @@ export function SettingsScreen() {
           {st.output.selectable && (
             <select
               className="select"
+              aria-label={t('settings.defaultOutput')}
               value={s.outputDeviceId}
               onChange={(e) => {
                 s.set({ outputDeviceId: e.target.value });
@@ -257,6 +259,7 @@ export function SettingsScreen() {
         <Row label={t('settings.defaultPreset')} sub={t('settings.defaultPresetSub')}>
           <select
             className="select sm"
+            aria-label={t('settings.defaultPreset')}
             style={{ width: 'auto', minWidth: 180 }}
             value={s.defaultPresetId}
             onChange={(e) => {
@@ -274,6 +277,7 @@ export function SettingsScreen() {
         <Row label={t('settings.exportFormat')}>
           <select
             className="select sm"
+            aria-label={t('settings.exportFormat')}
             style={{ width: 'auto', minWidth: 180 }}
             value={s.exportFormat}
             onChange={(e) => s.set({ exportFormat: e.target.value as ExportFormat })}

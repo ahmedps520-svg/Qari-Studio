@@ -24,7 +24,7 @@ The microphone needs a secure context: `https://` or `http://localhost`.
 ## Tests
 
 ```bash
-npm test             # unit tests: DSP, AudioWorklet processors, Quran data, search, files
+npm test             # unit tests: DSP, AudioWorklet processors, storage, Quran data, search, files
 npm run test:e2e     # end-to-end workflow in Chromium with a synthetic voice as the microphone
 npm run typecheck
 ```
@@ -42,7 +42,12 @@ It also checks:
 - a microphone unplugged mid-recording pauses the recording safely, and it resumes afterwards
 - discarding asks for confirmation
 - a recording interrupted by a crash or closed tab is recovered on the next launch
+- Vocal Presets can be auditioned using your own recording
+- a backup → delete-all → restore cycle brings back the audio sample-exact
 - 18 layouts (phone, tablet and desktop; both themes; Arabic RTL) have no horizontal overflow
+- an axe-core accessibility audit (WCAG 2 A/AA) finds no violations on 8 screens, in both themes and both languages
+
+The unit tests also cover storage robustness against an in-memory IndexedDB: a failed chunk write is retried with no gap, restoring never overwrites audio shared with a duplicate, and 16-bit takes round-trip bit-exactly.
 
 The suite writes screenshots and exported files to `test-results/`.
 

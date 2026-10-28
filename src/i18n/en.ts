@@ -259,6 +259,9 @@ export const en = {
   'rec.storage': 'Storage problem: the recording is kept in memory. Stop and export it to be safe.',
   'rec.startFailed': 'The recording could not start because local storage is unavailable.',
 
+  'rec.contextFailed': 'Audio could not start. Tap record again.',
+  'rec.resumeFailed': 'Could not resume yet — the device has not released audio. Try again in a moment.',
+  'review.incomplete': 'Part of this recording could not be written to this device’s storage. Export it now: after a reload only the stored part remains.',
   'review.title': 'Review',
   'review.draft': 'Not saved yet',
   'review.saved': 'Saved',

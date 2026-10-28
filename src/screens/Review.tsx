@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { audioCache } from '../audio/audioCache';
+import { computePeaks } from '../audio/dsp/peaks';
 import { usePlayer } from '../audio/hooks';
 import { player, type ListenVersion } from '../audio/player';
 import { paramsEqual, type Preset } from '../audio/presets';
@@ -84,9 +85,14 @@ export function ReviewScreen({ id }: { id: string }) {
     if (!player.isLoaded(meta.id)) {
       audioCache
         .get(meta.audioId)
-        .then((samples) => {
+        .then(async (samples) => {
           if (!alive) return;
           if (samples.length === 0) throw new Error('empty');
+          // If storage held less than was recorded (a failed write), show what is really there.
+          if (samples.length < meta.frames) {
+            const fixed = await patch(meta.id, { frames: samples.length, duration: samples.length / meta.sampleRate, peaks: computePeaks(samples), incomplete: true });
+            if (fixed && alive) setMeta(fixed);
+          }
           return player.load(meta.id, samples, meta.sampleRate, params ?? meta.params);
         })
         .catch(() => alive && setLoadError(true));
@@ -262,6 +268,7 @@ export function ReviewScreen({ id }: { id: string }) {
           </header>
 
           {loadError && <Notice kind="error">{t('review.loadError')}</Notice>}
+          {meta.incomplete && <Notice kind="warn">{t('review.incomplete')}</Notice>}
 
           <SeekWaveform
             peaks={meta.peaks}

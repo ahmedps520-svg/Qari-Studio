@@ -80,6 +80,8 @@
   --emerald-2: #2bb487;
   --emerald-glow: #5fe3b6;
   --emerald-deep: #0d4a36;
+  /* Solid emerald behind white text (≥ 4.5:1). */
+  --emerald-solid: #136a4d;
   --emerald-soft: rgba(43, 180, 135, 0.13);
   --emerald-line: rgba(95, 227, 182, 0.28);
 
@@ -127,18 +129,19 @@
 
   --text: #10271f;
   --text-2: #445a50;
-  --text-3: #6f7f77;
+  --text-3: #5b6b63;
   --text-on-accent: #fdfbf4;
 
   --emerald: #0f5c43;
   --emerald-2: #0d6a4c;
   --emerald-glow: #12936a;
   --emerald-deep: #0a3f2e;
+  --emerald-solid: #0f5c43;
   --emerald-soft: rgba(15, 92, 67, 0.08);
   --emerald-line: rgba(15, 92, 67, 0.22);
 
   --gold: #a48039;
-  --gold-2: #8f6d2a;
+  --gold-2: #79591c;
   --gold-soft: rgba(164, 128, 57, 0.1);
   --gold-line: rgba(164, 128, 57, 0.3);
 

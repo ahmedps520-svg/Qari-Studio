@@ -143,17 +143,22 @@ export function createVoiceChain(ctx: BaseAudioContext, initial: VoiceParams, op
     const old = conv;
     conv = { node, gain, key };
     if (old) {
-      if (immediate) {
+      // Disconnect the input side too, or the old convolver (and its kernels) stays alive.
+      const release = () => {
+        try {
+          preDelay.disconnect(old.node);
+        } catch {
+          /* already disconnected */
+        }
         old.node.disconnect();
         old.gain.disconnect();
-      } else {
+      };
+      if (immediate) release();
+      else {
         const t = ctx.currentTime;
         gain.gain.setTargetAtTime(1, t, 0.03);
         old.gain.gain.setTargetAtTime(0, t, 0.03);
-        setTimeout(() => {
-          old.node.disconnect();
-          old.gain.disconnect();
-        }, 300);
+        setTimeout(release, 300);
       }
     }
   };
@@ -275,6 +280,8 @@ export function createVoiceChain(ctx: BaseAudioContext, initial: VoiceParams, op
         conv.gain.disconnect();
       }
       limiter.port.onmessage = null;
+      // Let the audio thread stop running the worklet processors.
+      for (const w of [dynamics, limiter, denoise]) w?.port.postMessage({ type: 'dispose' });
     },
   };
 }

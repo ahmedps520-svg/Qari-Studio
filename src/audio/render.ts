@@ -29,15 +29,17 @@ export async function renderEnhanced(
   opts: { targetRate?: number; maxSeconds?: number; onProgress?: (p: number) => void; noiseProfile?: Float32Array | null } = {},
 ): Promise<Rendered> {
   const rate = opts.targetRate ?? sampleRate;
-  const src = opts.maxSeconds ? samples.subarray(0, Math.min(samples.length, Math.round(opts.maxSeconds * sampleRate))) : samples;
-  const profile = opts.noiseProfile !== undefined ? opts.noiseProfile : params.noiseReduction > 0 ? measureNoiseProfile(samples, sampleRate) : null;
+  // Work at the rendering rate throughout, so the noise profile matches the STFT that uses it.
+  const full = rate === sampleRate ? samples : (await resample([samples], sampleRate, rate))[0];
+  const src = opts.maxSeconds ? full.subarray(0, Math.min(full.length, Math.round(opts.maxSeconds * rate))) : full;
+  const profile = opts.noiseProfile !== undefined ? opts.noiseProfile : params.noiseReduction > 0 ? measureNoiseProfile(full, rate) : null;
   const latency = chainLatencySamples('render', rate);
-  const voiceLen = Math.ceil((src.length / sampleRate) * rate);
+  const voiceLen = src.length;
   const tail = Math.ceil(tailSeconds(params) * rate);
   const length = Math.max(1, voiceLen + tail + latency);
   const ctx = new OfflineAudioContext({ numberOfChannels: 2, length, sampleRate: rate });
   await loadWorklets(ctx);
-  const buf = new AudioBuffer({ length: Math.max(1, src.length), numberOfChannels: 1, sampleRate });
+  const buf = new AudioBuffer({ length: Math.max(1, src.length), numberOfChannels: 1, sampleRate: rate });
   if (src.length > 0) buf.copyToChannel(src as Float32Array<ArrayBuffer>, 0);
   const chain = createVoiceChain(ctx, params, { mode: 'render', noiseProfile: profile });
   const node = new AudioBufferSourceNode(ctx, { buffer: buf });

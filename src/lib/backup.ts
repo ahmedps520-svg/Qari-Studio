@@ -1,7 +1,7 @@
 import { strFromU8, strToU8, unzip, zip, type Unzipped, type Zippable } from 'fflate';
 import { decodeWav, encodeWav } from '../audio/encoders/wav';
 import type { Preset } from '../audio/presets';
-import { appendChunk, encodeChunk, getRecording, listRecordings, loadAudio, putRecording, type RecordingMeta } from './db';
+import { appendChunk, encodeChunk, getRecording, hasAudio, listRecordings, loadAudio, putRecording, type RecordingMeta } from './db';
 
 const MANIFEST = 'qari-studio-backup.json';
 
@@ -22,7 +22,8 @@ export async function createBackup(customPresets: Preset[], onProgress?: (p: num
   for (const [i, id] of audioIds.entries()) {
     const meta = recordings.find((r) => r.audioId === id)!;
     const samples = await loadAudio(id);
-    const wav = encodeWav([samples], meta.sampleRate, meta.format === 'f32' ? 32 : 16);
+    // Lossless: float takes as 32-bit float; 16-bit takes bit-exact (no dither).
+    const wav = encodeWav([samples], meta.sampleRate, meta.format === 'f32' ? 32 : 16, { dither: false });
     files[`audio/${id}.wav`] = [new Uint8Array(await wav.arrayBuffer()), { level: 0 }];
     onProgress?.((i + 1) / (audioIds.length + 1));
   }
@@ -63,6 +64,8 @@ export async function restoreBackup(file: Blob, onProgress?: (p: number) => void
   let restored = 0;
   for (const [i, meta] of manifest.recordings.entries()) {
     if (await getRecording(meta.id)) continue;
+    // Originals are immutable and may be shared by duplicates: never overwrite stored audio.
+    if (!written.has(meta.audioId) && (await hasAudio(meta.audioId))) written.add(meta.audioId);
     if (!written.has(meta.audioId)) {
       const wav = files[`audio/${meta.audioId}.wav`];
       if (!wav) continue;

@@ -98,7 +98,7 @@ export function SoundControls({ compact }: { compact?: boolean }) {
   return (
     <div className="sound-controls">
       <div className="controls-head">
-        <h3 className="section-title grow">{t('controls.title')}</h3>
+        <h2 className="section-title grow">{t('controls.title')}</h2>
         {modified && (
           <>
             <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={reset}>
@@ -285,9 +285,9 @@ export function LiveListenPanel({ compact }: { compact?: boolean }) {
           <Headphones />
         </span>
         <div className="grow">
-          <h3 id="live-title" className="live-title">
+          <h2 id="live-title" className="live-title">
             {t('live.title')}
-          </h3>
+          </h2>
           <p className="live-sub">
             {st.live.muted ? (
               <span className="pill warn">{t('live.muted')}</span>

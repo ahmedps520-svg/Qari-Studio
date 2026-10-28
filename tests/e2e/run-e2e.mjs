@@ -555,6 +555,31 @@ async function main() {
       assert(m.status === 'draft' && m.duration >= 1.9, 'recovered at least the flushed audio');
     });
 
+    await step('Accessibility audit (axe-core, WCAG 2 A/AA): both themes, English and Arabic', async () => {
+      const axeSrc = readFileSync(join(root, 'node_modules/axe-core/axe.min.js'), 'utf8');
+      const found = [];
+      const p = await ctx.newPage();
+      await p.goto(BASE);
+      for (const theme of ['midnight', 'ivory'])
+        for (const lang of ['en', 'ar']) {
+          await p.evaluate(([th, lg]) => {
+            const raw = JSON.parse(localStorage.getItem('qari-settings') || '{"state":{},"version":1}');
+            raw.state = { ...raw.state, theme: th, language: lg };
+            localStorage.setItem('qari-settings', JSON.stringify(raw));
+          }, [theme, lang]);
+          for (const r of ['#/', '#/quran', '#/quran/55', '#/studio', '#/library', `#/recording/${recId}`, '#/presets', '#/settings']) {
+            await p.goto(BASE + r);
+            await p.reload();
+            await p.waitForTimeout(700);
+            await p.evaluate(axeSrc);
+            const res = await p.evaluate(() => window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa'] }));
+            for (const v of res.violations) found.push(`${theme}/${lang}${r}: ${v.id} — ${v.nodes[0]?.target.join(' ')}`);
+          }
+        }
+      await p.close();
+      assert(found.length === 0, `no violations:\n      ${found.join('\n      ')}`);
+    });
+
     await step('Responsive layouts: no overflow on phone/tablet/desktop, both themes, Arabic RTL', async () => {
       const shots = [
         ['mobile-home', 390, 844, 'midnight', 'en', '#/'],

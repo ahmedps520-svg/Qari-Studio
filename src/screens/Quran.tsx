@@ -39,7 +39,7 @@ export function QuranScreen() {
         </div>
       </div>
       {results.length > 0 ? (
-        <div className="card surah-list" role="list">
+        <div className="card surah-list">
           {results.map((s) => (
             <SurahRow
               key={s.n}

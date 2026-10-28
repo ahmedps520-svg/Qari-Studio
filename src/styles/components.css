@@ -619,7 +619,7 @@ input[type='range']:disabled {
 }
 
 .segmented.emerald button[aria-pressed='true'] {
-  background: var(--emerald);
+  background: var(--emerald-solid);
   color: #fff;
 }
 
@@ -1138,4 +1138,8 @@ a.list-row:hover {
 
 .options.cols-2 {
   grid-template-columns: 1fr 1fr;
+}
+
+:root[data-theme='ivory'] .pill.emerald {
+  color: var(--emerald);
 }

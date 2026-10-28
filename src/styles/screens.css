@@ -1940,3 +1940,8 @@ kbd {
     padding: 0 14px;
   }
 }
+
+.empty h2 {
+  color: var(--text);
+  font-size: var(--fs-md);
+}

@@ -4,7 +4,7 @@ import { measureNoiseProfile } from './dsp/noiseProfile';
 import { encodeWav } from './encoders/wav';
 import { engine } from './engine';
 import type { VoiceParams } from './params';
-import { renderEnhanced } from './render';
+import { renderEnhanced, resample } from './render';
 
 /**
  * Recording player with sample-synchronised A/B comparison.
@@ -93,19 +93,26 @@ export class RecordingPlayer {
   async load(id: string, samples: Float32Array, sampleRate: number, params: VoiceParams): Promise<void> {
     const token = ++this.loadToken;
     this.unload();
-    this.set({ loading: true, ready: false, loadedId: id, error: null, playing: false, duration: samples.length / sampleRate, loudness: { original: null, a: null, b: null } });
+    // Always start on the enhanced version: a "b" or "original" choice from a previous
+    // recording would otherwise route to a missing chain (silence) or skip the preset.
+    this.set({ loading: true, ready: false, loadedId: id, error: null, playing: false, version: 'a', compare: false, duration: samples.length / sampleRate, loudness: { original: null, a: null, b: null } });
     try {
       const ctx = await engine.context();
       if (token !== this.loadToken) return;
       this.samples = samples;
       this.sampleRate = sampleRate;
       this.paramsA = params;
-      // Measured once per load so any preset with noise reduction can use it.
-      this.profile = measureNoiseProfile(samples, sampleRate);
+      // Measured once per load (at the context's rate, where the chain runs) so any preset with
+      // noise reduction can use it.
+      const atCtxRate = sampleRate === ctx.sampleRate ? samples : (await resample([samples], sampleRate, ctx.sampleRate))[0];
+      if (token !== this.loadToken) return;
+      this.profile = measureNoiseProfile(atCtxRate, ctx.sampleRate);
 
       const el = new Audio();
       el.preload = 'auto';
-      (el as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = true;
+      const pitch = el as HTMLAudioElement & { preservesPitch?: boolean; webkitPreservesPitch?: boolean };
+      pitch.preservesPitch = true;
+      pitch.webkitPreservesPitch = true; // older Safari
       el.playbackRate = this.state.rate;
       this.url = URL.createObjectURL(encodeWav([samples], sampleRate, 16));
       el.src = this.url;
@@ -226,6 +233,7 @@ export class RecordingPlayer {
 
   /** Update enhancement A (the recording's preset) live. */
   setParamsA(p: VoiceParams) {
+    this.measureToken++; // a measurement in flight belongs to the previous preset
     this.paramsA = p;
     this.chainA?.update(p);
     this.set({ loudness: { ...this.state.loudness, a: null } });
@@ -235,6 +243,7 @@ export class RecordingPlayer {
 
   /** Enable comparison against a second preset (B), or disable with null. */
   async setCompare(p: VoiceParams | null) {
+    this.measureToken++;
     const ctx = engine.audioContext;
     if (!ctx || !this.nodes.length) return;
     if (!p) {
@@ -297,7 +306,8 @@ export class RecordingPlayer {
       const original = this.state.loudness.original ?? integratedLoudness([span], this.sampleRate);
       const measureOne = async (p: VoiceParams | null) => {
         if (!p) return null;
-        const r = await renderEnhanced(span, this.sampleRate, p, { noiseProfile: this.profile });
+        // Render at the context's rate, which is the rate the noise profile was measured at.
+        const r = await renderEnhanced(span, this.sampleRate, p, { noiseProfile: this.profile, targetRate: engine.audioContext?.sampleRate });
         return integratedLoudness(r.channels, r.sampleRate);
       };
       const a = this.state.loudness.a ?? (await measureOne(this.paramsA));

@@ -5,7 +5,13 @@ export type WavBitDepth = 16 | 24 | 32;
  * or 32-bit IEEE float. Produced as a Blob assembled from parts so long recordings never need
  * one giant contiguous buffer.
  */
-export function encodeWav(channels: Float32Array[], sampleRate: number, bitDepth: WavBitDepth = 24): Blob {
+export function encodeWav(
+  channels: Float32Array[],
+  sampleRate: number,
+  bitDepth: WavBitDepth = 24,
+  opts: { dither?: boolean } = {},
+): Blob {
+  const dither = opts.dither ?? true;
   const numCh = channels.length;
   const frames = channels[0]?.length ?? 0;
   const bytesPerSample = bitDepth / 8;
@@ -53,12 +59,11 @@ export function encodeWav(channels: Float32Array[], sampleRate: number, bitDepth
         if (isFloat) {
           dv.setFloat32(o, s, true);
         } else if (bitDepth === 16) {
-          const d = (rand() - rand()) / 32768; // TPDF dither, ±1 LSB
-          const q = Math.max(-1, Math.min(1, s + d));
-          dv.setInt16(o, Math.round(q < 0 ? q * 32768 : q * 32767), true);
+          // TPDF dither (±1 LSB) unless the source is already 16-bit (lossless backups).
+          const d = dither ? (rand() - rand()) / 32768 : 0;
+          dv.setInt16(o, Math.max(-32768, Math.min(32767, Math.round((s + d) * 32768))), true);
         } else {
-          const q = Math.max(-1, Math.min(1, s));
-          const iv = Math.round(q < 0 ? q * 8388608 : q * 8388607);
+          const iv = Math.max(-8388608, Math.min(8388607, Math.round(s * 8388608)));
           dv.setUint8(o, iv & 0xff);
           dv.setUint8(o + 1, (iv >> 8) & 0xff);
           dv.setUint8(o + 2, (iv >> 16) & 0xff);

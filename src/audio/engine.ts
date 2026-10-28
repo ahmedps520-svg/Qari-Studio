@@ -76,6 +76,8 @@ export interface FinishedTake {
   samples: Float32Array;
   sampleRate: number;
   duration: number;
+  /** False when part of the take could not be written to storage (it is still in memory). */
+  complete: boolean;
 }
 
 type Listener = () => void;
@@ -102,12 +104,18 @@ const initialState: EngineState = {
   bypass: false,
 };
 
-/** Accumulates the take in memory and streams it to IndexedDB every ~2 s. */
-class TakeWriter {
+/**
+ * Accumulates the take in memory and streams it to IndexedDB every ~2 s.
+ * Audio counts as persisted only after a successful write; anything that fails to write stays
+ * queued and is retried with the next flush, so a transient storage error never leaves a gap.
+ */
+export class TakeWriter {
   readonly chunks: Float32Array[] = [];
   frames = 0;
-  private pending: Float32Array[] = [];
-  private pendingFrames = 0;
+  /** chunks[0, persistedIdx) are safely stored. */
+  private persistedIdx = 0;
+  persistedFrames = 0;
+  private sinceFlush = 0;
   private seq = 0;
   private writing: Promise<void> = Promise.resolve();
   failed = false;
@@ -117,37 +125,52 @@ class TakeWriter {
     readonly sampleRate: number,
     readonly format: SampleFormat,
     private onError: (e: unknown) => void,
+    private onRecovered: () => void,
   ) {}
 
   push(s: Float32Array) {
     this.chunks.push(s);
-    this.pending.push(s);
     this.frames += s.length;
-    this.pendingFrames += s.length;
-    if (this.pendingFrames >= this.sampleRate * 2) void this.flush();
+    this.sinceFlush += s.length;
+    if (this.sinceFlush >= this.sampleRate * 2) {
+      this.sinceFlush = 0;
+      void this.flush();
+    }
   }
 
   flush(): Promise<void> {
-    if (this.pendingFrames === 0) return this.writing;
-    const data = concat(this.pending, this.pendingFrames);
-    this.pending = [];
-    this.pendingFrames = 0;
-    const seq = this.seq++;
-    const frames = this.frames;
-    this.writing = this.writing
-      .then(() => appendChunk({ audioId: this.id, seq, frames: data.length, format: this.format, data: encodeChunk(data, this.format) }))
-      .then(() => patchRecording(this.id, { frames, duration: frames / this.sampleRate, updatedAt: Date.now() }))
-      .then(() => undefined)
-      .catch((e) => {
-        this.failed = true;
-        this.onError(e);
-      });
+    this.writing = this.writing.then(() => this.writePending());
     return this.writing;
   }
 
-  async finish(): Promise<Float32Array> {
+  private async writePending() {
+    const end = this.chunks.length;
+    if (end === this.persistedIdx) return;
+    const parts = this.chunks.slice(this.persistedIdx, end);
+    const n = parts.reduce((a, p) => a + p.length, 0);
+    try {
+      await appendChunk({ audioId: this.id, seq: this.seq, frames: n, format: this.format, data: encodeChunk(concat(parts, n), this.format) });
+    } catch (e) {
+      this.failed = true;
+      this.onError(e);
+      return;
+    }
+    this.seq++;
+    this.persistedIdx = end;
+    this.persistedFrames += n;
+    if (this.failed) {
+      this.failed = false;
+      this.onRecovered();
+    }
+    // Metadata is advisory (recovery recomputes it from the chunks), so its failure is not fatal.
+    await patchRecording(this.id, { frames: this.persistedFrames, duration: this.persistedFrames / this.sampleRate, updatedAt: Date.now() }).catch(() => undefined);
+  }
+
+  /** Flush (retrying once) and return the whole take, plus whether all of it is stored. */
+  async finish(): Promise<{ samples: Float32Array; complete: boolean }> {
     await this.flush();
-    return concat(this.chunks, this.frames);
+    if (this.persistedIdx < this.chunks.length) await this.flush();
+    return { samples: concat(this.chunks, this.frames), complete: this.persistedIdx === this.chunks.length };
   }
 }
 
@@ -197,6 +220,8 @@ export class AudioEngine {
   private preferredOutput = '';
 
   private writer: TakeWriter | null = null;
+  /** Bumped by every open/close so a slow getUserMedia from a superseded call is discarded. */
+  private inputGen = 0;
   private lastFrames = 0;
   private lastFramesCtxTime = 0;
   private recorderWaiters: { type: string; resolve: (frames: number) => void }[] = [];
@@ -287,11 +312,8 @@ export class AudioEngine {
     }
     const ctx = await this.ctxReady;
     if (ctx.state !== 'running') {
-      try {
-        await ctx.resume();
-      } catch {
-        /* resume can be refused without a gesture; state listener reports it */
-      }
+      // Without a user gesture resume() may never settle; don't hang callers on it.
+      await Promise.race([ctx.resume().catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
     }
     return ctx;
   }
@@ -420,14 +442,16 @@ export class AudioEngine {
       return;
     }
     if (this.state.recording.state === 'recording') return;
+    const gen = ++this.inputGen;
     this.setInput({ status: 'opening', error: null, errorDetail: null });
     let ctx: AudioContext;
     try {
       ctx = await this.context();
     } catch (e) {
-      this.setInput({ status: 'error', error: 'worklet', errorDetail: String(e) });
+      if (gen === this.inputGen) this.setInput({ status: 'error', error: 'worklet', errorDetail: String(e) });
       return;
     }
+    if (gen !== this.inputGen) return;
 
     const constraints = (id: string | null): MediaStreamConstraints => ({
       audio: {
@@ -446,6 +470,7 @@ export class AudioEngine {
       stream = await navigator.mediaDevices.getUserMedia(constraints(deviceId));
     } catch (e) {
       const m = mapError(e);
+      if (gen !== this.inputGen) return;
       if (m.code === 'notfound' && deviceId) {
         // The remembered microphone is gone — fall back to the system default.
         try {
@@ -453,7 +478,7 @@ export class AudioEngine {
           deviceId = null;
         } catch (e2) {
           const m2 = mapError(e2);
-          this.setInput({ status: 'error', error: m2.code, errorDetail: m2.detail });
+          if (gen === this.inputGen) this.setInput({ status: 'error', error: m2.code, errorDetail: m2.detail });
           await this.refreshDevices();
           return;
         }
@@ -462,6 +487,11 @@ export class AudioEngine {
         await this.refreshDevices();
         return;
       }
+    }
+    if (gen !== this.inputGen) {
+      // Superseded (the Studio was left, or another device was chosen) while the prompt was open.
+      for (const t of stream.getTracks()) t.stop();
+      return;
     }
 
     this.teardownSource();
@@ -527,6 +557,7 @@ export class AudioEngine {
   /** Release the microphone (the browser's recording indicator turns off). */
   closeInput() {
     if (this.state.recording.state !== 'idle') return;
+    this.inputGen++;
     this.enableLive(false);
     this.teardownSource();
     if (this.liveChain) {
@@ -535,7 +566,10 @@ export class AudioEngine {
     }
     this.liveConnected = false;
     for (const n of [this.inputGain, this.inputAnalyser, this.recorder, this.recorderSink]) n?.disconnect();
-    if (this.recorder) this.recorder.port.onmessage = null;
+    if (this.recorder) {
+      this.recorder.port.onmessage = null;
+      this.recorder.port.postMessage({ type: 'dispose' });
+    }
     this.inputGain = this.inputAnalyser = this.recorderSink = null;
     this.recorder = null;
     this.setInput({ status: 'off', error: null, errorDetail: null });
@@ -683,6 +717,10 @@ export class AudioEngine {
     if (this.state.input.status !== 'on' || !this.recorder || !this.ctx) return null;
     this.setRecording({ state: 'starting', error: null, interruption: null });
     const ctx = await this.context();
+    if (ctx.state !== 'running' || this.state.input.status !== 'on') {
+      this.setRecording({ state: 'idle', error: 'context', interruption: null });
+      return null;
+    }
     const id = newId();
     const now = Date.now();
     const meta: RecordingMeta = {
@@ -713,9 +751,15 @@ export class AudioEngine {
       this.setRecording({ state: 'idle', error: String((e as Error)?.message ?? e), interruption: 'storage' });
       return null;
     }
-    this.writer = new TakeWriter(id, ctx.sampleRate, info.format, (e) => {
-      this.setRecording({ interruption: 'storage', error: String((e as Error)?.message ?? e) });
-    });
+    this.writer = new TakeWriter(
+      id,
+      ctx.sampleRate,
+      info.format,
+      (e) => this.setRecording({ interruption: 'storage', error: String((e as Error)?.message ?? e) }),
+      () => {
+        if (this.state.recording.interruption === 'storage') this.setRecording({ interruption: null, error: null });
+      },
+    );
     this.lastFrames = 0;
     this.lastFramesCtxTime = ctx.currentTime;
     this.recorder.port.postMessage({ type: 'start' });
@@ -736,6 +780,8 @@ export class AudioEngine {
     if (this.state.recording.state !== 'paused' || !this.recorder) return false;
     if (this.state.input.status !== 'on') return false;
     const ctx = await this.context();
+    // The take may have been stopped or discarded while we waited for the device.
+    if (this.state.recording.state !== 'paused' || !this.writer || !this.recorder) return false;
     if (ctx.state !== 'running') return false;
     this.lastFramesCtxTime = ctx.currentTime;
     this.recorder.port.postMessage({ type: 'resume' });
@@ -755,20 +801,21 @@ export class AudioEngine {
     }
     const writer = this.writer;
     this.writer = null;
-    const samples = await writer.finish();
+    const { samples, complete } = await writer.finish();
     const sr = writer.sampleRate;
     const duration = samples.length / sr;
     const peaks = computePeaks(samples);
     try {
-      await patchRecording(writer.id, { status: 'draft', frames: samples.length, duration, peaks, updatedAt: Date.now() });
+      await patchRecording(writer.id, { status: 'draft', frames: samples.length, duration, peaks, incomplete: !complete, updatedAt: Date.now() });
     } catch (e) {
       this.setRecording({ interruption: 'storage', error: String((e as Error)?.message ?? e) });
     }
+    // The in-memory copy is complete even if storage failed, so review and export still work.
     audioCache.put(writer.id, samples);
     this.releaseWakeLock();
     this.stoppingByUs = false;
-    this.setRecording({ state: 'idle', id: null, interruption: writer.failed ? 'storage' : null });
-    return { id: writer.id, samples, sampleRate: sr, duration };
+    this.setRecording({ state: 'idle', id: null, interruption: complete ? null : 'storage' });
+    return { id: writer.id, samples, sampleRate: sr, duration, complete };
   }
 
   private async acquireWakeLock() {

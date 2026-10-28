@@ -250,7 +250,7 @@ export function RecitePicker({
           />
         </div>
       )}
-      <div className="list" role="list">
+      <div className="list">
         {results.map((s) => (
           <SurahRow
             key={s.n}

@@ -135,3 +135,16 @@ describe('qari-recorder', () => {
     expect(captured).toBe(stopped.frames);
   });
 });
+
+describe('processor lifetime', () => {
+  it('stops processing once disposed so the browser can release it', () => {
+    for (const name of ['qari-recorder', 'qari-dynamics', 'qari-denoise', 'qari-limiter']) {
+      const p = procs.create(name);
+      const io = () => [[new Float32Array(128), new Float32Array(128)]];
+      const params = { gate: new Float32Array([0]), comp: new Float32Array([0]), amount: new Float32Array([0]) };
+      expect(p.process(io(), io(), params)).toBe(true);
+      p.port.send({ type: 'dispose' });
+      expect(p.process(io(), io(), params)).toBe(false);
+    }
+  });
+});

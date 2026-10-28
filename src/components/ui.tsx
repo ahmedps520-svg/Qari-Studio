@@ -199,7 +199,7 @@ export function Empty({ icon, title, body, action }: { icon: ReactNode; title: s
   return (
     <div className="empty">
       <div className="empty-icon">{icon}</div>
-      <h3>{title}</h3>
+      <h2>{title}</h2>
       {body && <p>{body}</p>}
       {action && <div style={{ marginTop: 10 }}>{action}</div>}
     </div>

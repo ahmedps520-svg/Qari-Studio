@@ -109,7 +109,11 @@ export function StudioScreen() {
       params: p,
       format: recordingFormat,
     });
-    if (!id && engine.getState().recording.interruption === 'storage') toast(t('rec.startFailed'), 'error');
+    if (!id) {
+      const r = engine.getState().recording;
+      if (r.interruption === 'storage') toast(t('rec.startFailed'), 'error');
+      else if (r.error === 'context') toast(t('rec.contextFailed'), 'warning');
+    }
   }, [t, sel, recordingFormat]);
 
   const stop = useCallback(async () => {
@@ -134,9 +138,10 @@ export function StudioScreen() {
     else if (r === 'recording') await engine.pauseRecording();
     else if (r === 'paused') {
       if (engine.getState().input.status !== 'on') await engine.openInput();
-      await engine.resumeRecording();
+      const ok = await engine.resumeRecording();
+      if (!ok && engine.getState().recording.state === 'paused') toast(t('rec.resumeFailed'), 'warning');
     }
-  }, [start]);
+  }, [start, t]);
 
   // Keyboard shortcuts (desktop).
   useEffect(() => {
@@ -205,7 +210,7 @@ export function StudioScreen() {
     <div className="page wide studio">
       <div className={`studio-grid ${surah && showText ? 'with-text' : ''}`}>
         {/* ---------------------------------------------------------------- Surah & text */}
-        <aside className="studio-left">
+        <div className="studio-left">
           <div className="studio-surah card card-pad">
             {surah ? <SurahNumber n={surah.n} /> : <span className="free-icon"><Mic /></span>}
             <div className="grow">
@@ -249,7 +254,7 @@ export function StudioScreen() {
               <ReadingView surah={surah} from={sel.from} to={sel.to} compact onHide={() => setSettings({ showTextInStudio: false })} />
             </div>
           )}
-        </aside>
+        </div>
 
         {/* ---------------------------------------------------------------- Recorder */}
         <section className="studio-center card" aria-label={t('studio.title')}>
@@ -384,7 +389,7 @@ export function StudioScreen() {
         </section>
 
         {/* ---------------------------------------------------------------- Monitoring & sound */}
-        <aside className="studio-right">
+        <aside className="studio-right" aria-label={`${t('live.title')} · ${t('controls.title')}`}>
           <div ref={livePanelRef} className="card card-pad live-card">
             <LiveListenPanel />
           </div>

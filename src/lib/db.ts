@@ -36,6 +36,8 @@ export interface RecordingMeta {
   exportName?: string;
   lastExport?: { format: string; at: number; version: 'enhanced' | 'original' };
   duplicateOf?: string;
+  /** Part of the audio could not be written to storage when the take was stopped. */
+  incomplete?: boolean;
 }
 
 export interface ChunkRecord {
@@ -77,6 +79,10 @@ export function db(): Promise<IDBPDatabase<QariDB>> {
       },
       blocking() {
         dbp?.then((x) => x.close());
+        dbp = null;
+      },
+      terminated() {
+        // The browser closed the connection (e.g. Safari's IndexedDB server restarting): reopen.
         dbp = null;
       },
     });
@@ -121,11 +127,9 @@ export async function listRecordings(): Promise<RecordingMeta[]> {
 
 export function encodeChunk(samples: Float32Array, format: SampleFormat): ArrayBuffer {
   if (format === 'f32') return samples.slice().buffer as ArrayBuffer;
+  // Symmetric scaling (×32768, clamped) so decode → encode round-trips exactly.
   const out = new Int16Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    out[i] = s < 0 ? Math.round(s * 32768) : Math.round(s * 32767);
-  }
+  for (let i = 0; i < samples.length; i++) out[i] = Math.max(-32768, Math.min(32767, Math.round(samples[i] * 32768)));
   return out.buffer;
 }
 
@@ -157,6 +161,10 @@ export async function loadAudio(audioId: string): Promise<Float32Array> {
     o += c.frames;
   }
   return out;
+}
+
+export async function hasAudio(audioId: string): Promise<boolean> {
+  return (await (await db()).countFromIndex('chunks', 'audioId', audioId)) > 0;
 }
 
 export async function audioFrames(audioId: string): Promise<number> {

@@ -32,7 +32,7 @@ class QariRecorder extends AudioWorkletProcessor {
     this.fill = 0;
     this.frames = 0;
     this.recording = false;
-    this.peak = 0;
+    this.alive = true;
     this.port.onmessage = (e) => {
       const msg = e.data || {};
       switch (msg.type) {
@@ -54,6 +54,9 @@ class QariRecorder extends AudioWorkletProcessor {
           this.recording = false;
           this.port.postMessage({ type: 'stopped', frames: this.frames, time: currentTime });
           break;
+        case 'dispose':
+          this.alive = false;
+          break;
       }
     };
   }
@@ -66,6 +69,7 @@ class QariRecorder extends AudioWorkletProcessor {
   }
 
   process(inputs) {
+    if (!this.alive) return false;
     if (!this.recording) return true;
     const input = inputs[0];
     // No connected input (e.g. the microphone was disconnected): nothing is captured and the
@@ -131,9 +135,15 @@ class QariDynamics extends AudioWorkletProcessor {
     this.relC = coef(0.16);
     this.ms = 0;
     this.gcDb = 0;
+    this.alive = true;
+    this.port.onmessage = (e) => {
+      if (e.data && e.data.type === 'dispose') this.alive = false;
+    };
   }
 
   process(inputs, outputs, parameters) {
+    // Returning false lets the browser release a node that is no longer used.
+    if (!this.alive) return false;
     const output = outputs[0];
     const out = output[0];
     const input = inputs[0];
@@ -308,8 +318,10 @@ class QariDenoise extends AudioWorkletProcessor {
     this.smooth = new Float64Array(this.bins);
     this.profile = o.profile ? Float64Array.from(o.profile) : null;
     this.amount = 0;
+    this.alive = true;
     this.port.onmessage = (e) => {
       if (e.data && e.data.type === 'profile') this.profile = e.data.profile ? Float64Array.from(e.data.profile) : null;
+      if (e.data && e.data.type === 'dispose') this.alive = false;
     };
   }
 
@@ -363,6 +375,7 @@ class QariDenoise extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs, parameters) {
+    if (!this.alive) return false;
     const input = inputs[0];
     const x = input && input.length > 0 ? input[0] : null;
     const output = outputs[0];
@@ -411,12 +424,15 @@ class QariLimiter extends AudioWorkletProcessor {
     this.t = 0;
     this.heavy = 0;
     this.cooldown = 0;
+    this.alive = true;
     this.port.onmessage = (e) => {
       if (e.data && e.data.type === 'guard') this.guard = !!e.data.enabled;
+      if (e.data && e.data.type === 'dispose') this.alive = false;
     };
   }
 
   process(inputs, outputs) {
+    if (!this.alive) return false;
     const input = inputs[0];
     const output = outputs[0];
     const n = output[0].length;
