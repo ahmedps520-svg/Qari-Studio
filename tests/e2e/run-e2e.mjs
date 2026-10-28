@@ -105,6 +105,16 @@ async function startServer(build = true) {
 }
 
 const qari = (page, fn, arg) => page.evaluate(fn, arg);
+
+/** Poll an async in-page check until it returns true (waitForFunction does not await promises). */
+async function until(page, fn, arg, timeout = 30000) {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    if (await page.evaluate(fn, arg)) return;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  throw new Error(`timed out waiting for ${fn.toString().slice(0, 80)}`);
+}
 const engineState = (page) => qari(page, () => window.__qari.engine.getState());
 
 /** The Studio opens the microphone by itself when already permitted; otherwise press the button. */
@@ -350,12 +360,11 @@ async function main() {
       page = await ctx.newPage();
       watch(page);
       await page.goto(BASE);
-      await page.waitForFunction(() => navigator.serviceWorker?.controller || true);
       await page.goto(`${BASE}#/library`);
       await page.locator(`[data-testid=recording-row][data-id="${recId}"]`).waitFor();
       assert((await page.locator(`[data-testid=recording-row][data-id="${recId}"]`).innerText()).includes('Evening recitation'), 'renamed title persisted');
       // Offline: the service worker serves the app; recordings come from IndexedDB.
-      await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.active != null, null, { timeout: 15000 });
+      await until(page, () => navigator.serviceWorker.getRegistration().then((r) => r?.active != null), null, 15000);
       await ctx.setOffline(true);
       const p2 = await ctx.newPage();
       watch(p2);
@@ -477,14 +486,15 @@ async function main() {
       await page.locator('.setting-row', { hasText: 'Delete all recordings' }).locator('button').click();
       await page.locator('.sheet input').fill('DELETE');
       await page.getByTestId('confirm-ok').click();
-      await page.waitForFunction(() => window.__qari.db.listRecordings().then((l) => l.length === 0));
+      await until(page, () => window.__qari.db.listRecordings().then((l) => l.length === 0));
 
       await page.locator('input[type=file]').setInputFiles(zipPath);
-      await page.waitForFunction((n) => window.__qari.db.listRecordings().then((l) => l.length === n), before.length, { timeout: 30000 });
-      const after = await qari(page, () => window.__qari.db.listRecordings().then((l) => l.map((r) => ({ id: r.id, title: r.title, frames: r.frames }))));
+      await until(page, (n) => window.__qari.db.listRecordings().then((l) => l.length === n), before.length);
+      await page.getByText(/^Restored /).waitFor();
+      const after = await qari(page, () => window.__qari.db.listRecordings().then((l) => l.map((r) => ({ id: r.id, title: r.title, frames: r.frames, status: r.status }))));
       for (const b of before) {
         const a = after.find((x) => x.id === b.id);
-        assert(a && a.title === b.title && a.frames === b.frames, `restored ${b.title}`);
+        assert(a && a.title === b.title && a.frames === b.frames, `restored ${b.title} (before ${JSON.stringify(b)}, after ${JSON.stringify(a)})`);
       }
       const frames = await qari(page, (id) => window.__qari.db.getRecording(id).then((m) => window.__qari.db.loadAudio(m.audioId)).then((s) => s.length), recId);
       assert(frames === before.find((b) => b.id === recId).frames, 'audio restored sample-exact');
